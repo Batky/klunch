@@ -5,13 +5,16 @@
  */
 package eu.me73.lunch.forms;
 
+import eu.me73.lunch.classes.Order;
+import eu.me73.lunch.exports.Printings;
+import eu.me73.lunch.inout.ExportToFile;
 import eu.me73.lunch.inout.Import;
 import eu.me73.lunch.inout.ImportFromOldVersion;
 import eu.me73.lunch.other.ApplicationContext;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Locale;
-import javax.swing.DefaultListModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,11 +27,14 @@ public class Administration extends javax.swing.JFrame {
     private static final Logger log = LoggerFactory.getLogger(Administration.class);
     private static final ApplicationContext applicationContext = ApplicationContext.getInstance();
     private Import oldImport;
+    ArrayList<Order> daysOrders;
+    boolean newButtonSave;
 
     /**
      * Creates new form Administration
      */
     public Administration() {
+        newButtonSave = false;
         initComponents();        
     }
 
@@ -92,6 +98,11 @@ public class Administration extends javax.swing.JFrame {
         workingMonthLabel.setText("Spracovávaný mesiac:");
 
         monthSelectionComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Január", "Február", "Marec", "Apríl", "Máj", "Jún", "Júl", "August", "September", "Október", "November", "December" }));
+        monthSelectionComboBox.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                monthSelectionComboBoxActionPerformed(evt);
+            }
+        });
 
         pathToOriginalDataLabel.setText("Cesta ku pôvodným dátam:");
 
@@ -109,12 +120,28 @@ public class Administration extends javax.swing.JFrame {
         });
 
         loadNewDataButton.setText("Nacitaj");
+        loadNewDataButton.setEnabled(false);
+        loadNewDataButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                loadNewDataButtonActionPerformed(evt);
+            }
+        });
 
         exportToOlympButton.setText("Exportuj");
         exportToOlympButton.setEnabled(false);
+        exportToOlympButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                exportToOlympButtonActionPerformed(evt);
+            }
+        });
 
         exportToExcelButton.setText("Exportuj");
         exportToExcelButton.setEnabled(false);
+        exportToExcelButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                exportToExcelButtonActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout commandPanelLayout = new javax.swing.GroupLayout(commandPanel);
         commandPanel.setLayout(commandPanelLayout);
@@ -191,6 +218,11 @@ public class Administration extends javax.swing.JFrame {
 
         selectedDayComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31" }));
         selectedDayComboBox.setEnabled(false);
+        selectedDayComboBox.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                selectedDayComboBoxActionPerformed(evt);
+            }
+        });
 
         numberOfLunchiesLabel.setText("Počet obedov na vybraný deň:");
 
@@ -332,19 +364,81 @@ public class Administration extends javax.swing.JFrame {
         this.closingMe();
     }//GEN-LAST:event_formWindowClosing
 
+    private int getMonth(){
+        return monthSelectionComboBox.getSelectedIndex() + 1;
+    }
+    
+    private int getDay(){
+        return selectedDayComboBox.getSelectedIndex() + 1;
+    }
+    
+    private int getYear(){
+        return LocalDate.now().getYear();
+    }       
+    
+    private void setListBoxes(){
+        LocalDate ld;   
+        allUsersList.setListData(oldImport.getAllPersonsSortedSK().toArray());
+        try {
+            ld = LocalDate.of(
+                    getYear(),
+                    getMonth(),
+                    getDay());
+            daysOrders = oldImport.getOrdersByDate(ld);
+        } catch (Exception e) {
+            log.error(e.getMessage());
+        }
+        actualPeopleList.setListData(daysOrders.toArray());
+        numberOfLunchiesLabelShowing.setText(String.valueOf(daysOrders.size()));
+    }
+    
     private void loadOldDataButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_loadOldDataButtonActionPerformed
         log.trace("loadOldDataButton action performed");
         oldImport = new ImportFromOldVersion(pathToOriginalData.getText());
         oldImport.setReload(false);
         log.debug("Loading all persons from {}", oldImport.getPersonFile());
-        int size = oldImport.getAllPersons().size();
-        log.debug("Getting {} persons", oldImport.getAllPersons().size());
-        DefaultListModel listModel = (DefaultListModel) allUsersList.getModel();
-        log.trace("Removing {} elements from allUsersList", listModel.size());
-        listModel.removeAllElements();
-        log.debug("Putting persons into allPersonsList");
-        oldImport.getAllPersons().stream().forEach((p)->listModel.addElement(p.getLongName()));
+        log.debug("Getting {} persons", oldImport.getAllPersons().size());        
+        log.trace("Disabling/Enabling buttons and components");
+        loadOldDataButton.setEnabled(false);        
+        loadNewDataButton.setEnabled(true);
+        loadNewDataButton.setText("Ulož");
+        newButtonSave = true;
+        selectedDayComboBox.setEnabled(true);
+        numberOfLunchiesLabelShowing.setEnabled(true);
+        exportToOlympButton.setEnabled(true);
+        exportToExcelButton.setEnabled(true);
+        setListBoxes();
     }//GEN-LAST:event_loadOldDataButtonActionPerformed
+
+    private void selectedDayComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_selectedDayComboBoxActionPerformed
+        setListBoxes();
+    }//GEN-LAST:event_selectedDayComboBoxActionPerformed
+
+    private void monthSelectionComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_monthSelectionComboBoxActionPerformed
+        if (selectedDayComboBox.isEnabled()) {
+            setListBoxes();
+        }
+    }//GEN-LAST:event_monthSelectionComboBoxActionPerformed
+
+    private void exportToOlympButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_exportToOlympButtonActionPerformed
+        Printings print = new Printings(oldImport);
+        print.ExportToOlymp(pathToOlympExport.getText(), LocalDate.of(getYear(), getMonth(), 1));
+    }//GEN-LAST:event_exportToOlympButtonActionPerformed
+
+    private void exportToExcelButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_exportToExcelButtonActionPerformed
+        Printings print = new Printings(oldImport);
+        print.Monthly(pathToExcelData.getText(), LocalDate.of(getYear(), getMonth(), 1), false);
+    }//GEN-LAST:event_exportToExcelButtonActionPerformed
+
+    private void loadNewDataButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_loadNewDataButtonActionPerformed
+        if (newButtonSave) {
+            ExportToFile export = new ExportToFile(pathToNewData.getText());
+            export.savePersons(oldImport.getAllPersons());
+            export.saveOrders(oldImport.getAllOrders());
+            export.saveDays(oldImport.getAllDays());
+            export.savePrices(oldImport.getPrices());
+        }
+    }//GEN-LAST:event_loadNewDataButtonActionPerformed
 
     private boolean dataChanged(){
         if (monthSelectionComboBox.getSelectedIndex() + 1 != applicationContext.getLastWorkingMonth())
@@ -355,9 +449,7 @@ public class Administration extends javax.swing.JFrame {
             return true;
         if (!pathToExcelData.getText().equals(applicationContext.getExportToExcel()))
             return true;
-        if (!pathToOlympExport.getText().equals(applicationContext.getExportToOlymp()))
-            return true;
-        return false;
+        return !pathToOlympExport.getText().equals(applicationContext.getExportToOlymp());
     }
     
     /**
