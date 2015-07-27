@@ -9,12 +9,14 @@ import eu.me73.lunch.classes.Order;
 import eu.me73.lunch.exports.Printings;
 import eu.me73.lunch.inout.ExportToFile;
 import eu.me73.lunch.inout.Import;
+import eu.me73.lunch.inout.ImportFromFile;
 import eu.me73.lunch.inout.ImportFromOldVersion;
 import eu.me73.lunch.other.ApplicationContext;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Locale;
+import javax.swing.JOptionPane;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,7 +28,7 @@ public class Administration extends javax.swing.JFrame {
     
     private static final Logger log = LoggerFactory.getLogger(Administration.class);
     private static final ApplicationContext applicationContext = ApplicationContext.getInstance();
-    private Import oldImport;
+    private Import localImport;
     ArrayList<Order> daysOrders;
     boolean newButtonSave;
 
@@ -120,7 +122,6 @@ public class Administration extends javax.swing.JFrame {
         });
 
         loadNewDataButton.setText("Nacitaj");
-        loadNewDataButton.setEnabled(false);
         loadNewDataButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 loadNewDataButtonActionPerformed(evt);
@@ -238,6 +239,11 @@ public class Administration extends javax.swing.JFrame {
 
         changeLunchButton.setText("Zameň obed");
         changeLunchButton.setEnabled(false);
+        changeLunchButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                changeLunchButtonActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout additionalPanelLayout = new javax.swing.GroupLayout(additionalPanel);
         additionalPanel.setLayout(additionalPanelLayout);
@@ -378,13 +384,13 @@ public class Administration extends javax.swing.JFrame {
     
     private void setListBoxes(){
         LocalDate ld;   
-        allUsersList.setListData(oldImport.getAllPersonsSortedSK().toArray());
+        allUsersList.setListData(localImport.getAllPersonsSortedSK().toArray());
         try {
             ld = LocalDate.of(
                     getYear(),
                     getMonth(),
                     getDay());
-            daysOrders = oldImport.getOrdersByDate(ld);
+            daysOrders = localImport.getOrdersByDate(ld);
         } catch (Exception e) {
             log.error(e.getMessage());
         }
@@ -394,10 +400,10 @@ public class Administration extends javax.swing.JFrame {
     
     private void loadOldDataButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_loadOldDataButtonActionPerformed
         log.trace("loadOldDataButton action performed");
-        oldImport = new ImportFromOldVersion(pathToOriginalData.getText());
-        oldImport.setReload(false);
-        log.debug("Loading all persons from {}", oldImport.getPersonFile());
-        log.debug("Getting {} persons", oldImport.getAllPersons().size());        
+        localImport = new ImportFromOldVersion(pathToOriginalData.getText());
+        localImport.setReload(false);
+        log.debug("Loading all persons from {}", localImport.getPersonFile());
+        log.debug("Getting {} persons", localImport.getAllPersons().size());        
         log.trace("Disabling/Enabling buttons and components");
         loadOldDataButton.setEnabled(false);        
         loadNewDataButton.setEnabled(true);
@@ -407,38 +413,92 @@ public class Administration extends javax.swing.JFrame {
         numberOfLunchiesLabelShowing.setEnabled(true);
         exportToOlympButton.setEnabled(true);
         exportToExcelButton.setEnabled(true);
+        changeLunchButton.setEnabled(true);
         setListBoxes();
     }//GEN-LAST:event_loadOldDataButtonActionPerformed
 
     private void selectedDayComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_selectedDayComboBoxActionPerformed
+        log.trace("day selection combo box action performed, selection: {}", selectedDayComboBox.getSelectedItem().toString());
         setListBoxes();
     }//GEN-LAST:event_selectedDayComboBoxActionPerformed
 
     private void monthSelectionComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_monthSelectionComboBoxActionPerformed
+        log.trace("month selection combo box action performed, selection: {}", monthSelectionComboBox.getSelectedItem().toString());
         if (selectedDayComboBox.isEnabled()) {
             setListBoxes();
         }
     }//GEN-LAST:event_monthSelectionComboBoxActionPerformed
 
     private void exportToOlympButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_exportToOlympButtonActionPerformed
-        Printings print = new Printings(oldImport);
-        print.ExportToOlymp(pathToOlympExport.getText(), LocalDate.of(getYear(), getMonth(), 1));
+        log.trace("export to Olymp action button performed");
+        Printings print = new Printings(localImport);
+        log.debug("Trying to create export olymp file with path {} and date {}", pathToOlympExport.getText(), LocalDate.of(getYear(), getMonth(), 1).format(DateTimeFormatter.ISO_DATE));
+        print.ExportToOlymp(pathToOlympExport.getText(), LocalDate.of(getYear(), getMonth(), 1));       
     }//GEN-LAST:event_exportToOlympButtonActionPerformed
 
     private void exportToExcelButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_exportToExcelButtonActionPerformed
-        Printings print = new Printings(oldImport);
+        log.trace("export to Excel action button performed");
+        Printings print = new Printings(localImport);
+        log.debug("Trying to create export excel file with path {} and date {}", pathToExcelData.getText(), LocalDate.of(getYear(), getMonth(), 1).format(DateTimeFormatter.ISO_DATE));
         print.Monthly(pathToExcelData.getText(), LocalDate.of(getYear(), getMonth(), 1), false);
     }//GEN-LAST:event_exportToExcelButtonActionPerformed
 
     private void loadNewDataButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_loadNewDataButtonActionPerformed
+        log.trace("load new data action button performed, button in state save: {}", newButtonSave);
         if (newButtonSave) {
+            log.debug("Exporting data to new data files, path: {}", pathToNewData.getText());
             ExportToFile export = new ExportToFile(pathToNewData.getText());
-            export.savePersons(oldImport.getAllPersons());
-            export.saveOrders(oldImport.getAllOrders());
-            export.saveDays(oldImport.getAllDays());
-            export.savePrices(oldImport.getPrices());
+            log.debug("Saving {} persons", localImport.getAllPersons().size());
+            export.savePersons(localImport.getAllPersons());
+            log.debug("Saving {} orders", localImport.getAllOrders().size());
+            export.saveOrders(localImport.getAllOrders());
+            log.debug("Saving {} days", localImport.getAllDays().size());
+            export.saveDays(localImport.getAllDays());
+            log.debug("Saving {} prices", localImport.getPrices().size());
+            export.savePrices(localImport.getPrices());
+        } else {
+            log.debug("Importing from new date file {}", pathToNewData.getText());
+            localImport = new ImportFromFile(pathToNewData.getText());
+            loadOldDataButton.setEnabled(false);        
+            loadNewDataButton.setEnabled(true);
+            loadNewDataButton.setText("Ulož");
+            newButtonSave = true;
+            selectedDayComboBox.setEnabled(true);
+            numberOfLunchiesLabelShowing.setEnabled(true);
+            exportToOlympButton.setEnabled(true);
+            exportToExcelButton.setEnabled(true);
+            changeLunchButton.setEnabled(true);
+            setListBoxes();
         }
     }//GEN-LAST:event_loadNewDataButtonActionPerformed
+
+    private void changeLunchButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_changeLunchButtonActionPerformed
+        log.trace("change lunch person action button performed");
+        if (actualPeopleList.getSelectedIndex() == -1) {
+            JOptionPane.showMessageDialog(null,
+                    "Nie je vybrany ziadny obed ",
+                    "Chyba", 
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        String lunch = actualPeopleList.getSelectedValue().toString();
+        if (allUsersList.getSelectedIndex() == -1) {
+            if (JOptionPane.showConfirmDialog(null, 
+                    "Nebol vybrany ziadny nahradny clovek za obed: \n" + lunch + "\n\nchcete obed vymazat zo zoznamu ?", 
+                    "Otazka", 
+                    JOptionPane.OK_CANCEL_OPTION) == JOptionPane.OK_OPTION) {
+                //TODO: Remove order
+            }
+            return;
+        }
+        String persona = allUsersList.getSelectedValue().toString();
+        if (JOptionPane.showConfirmDialog(null, 
+                    "Naozaj chcete zamenit osobu v nasledujucom obede: \n" + lunch + "\nza\n" + persona, 
+                    "Otazka", 
+                    JOptionPane.OK_CANCEL_OPTION) == JOptionPane.OK_OPTION) {
+            //TODO: Change order person
+        }
+    }//GEN-LAST:event_changeLunchButtonActionPerformed
 
     private boolean dataChanged(){
         if (monthSelectionComboBox.getSelectedIndex() + 1 != applicationContext.getLastWorkingMonth())

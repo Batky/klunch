@@ -60,6 +60,18 @@ public abstract class Import implements ImportInterface{
         this.prices = null;
         reload = false;
     }
+    
+    protected void removeElement(ArrayList from, int element){
+        if (from.isEmpty())
+            return;
+        from.remove(element);
+    }
+
+    protected void removeElement(ArrayList from, Object element){
+        if (from.isEmpty())
+            return;
+        from.remove(element);
+    }
 
     public boolean isSetReload() {
         return reload;
